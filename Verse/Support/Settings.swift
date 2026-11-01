@@ -16,6 +16,19 @@ enum LyricStyle: String, CaseIterable, Identifiable {
     }
 }
 
+/// Where the lyric colours come from (stored as the existing `starlight` and `autoColors` flags).
+enum ColourSource: String, CaseIterable, Identifiable {
+    case warmCream, album, custom
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .warmCream: "Warm cream"
+        case .album: "From album art"
+        case .custom: "Custom"
+        }
+    }
+}
+
 enum LockBackground: String, CaseIterable, Identifiable {
     /// Near-black with faint dust stars and grain (default).
     case night
@@ -93,6 +106,14 @@ final class Settings: ObservableObject {
         textScale = defaults.double(forKey: "textScale")
         syncOffsetMs = defaults.double(forKey: "syncOffsetMs")
         keepAwake = defaults.bool(forKey: "keepAwake")
+    }
+
+    var colourSource: ColourSource {
+        get { starlight ? .warmCream : (autoColors ? .album : .custom) }
+        set {
+            starlight = newValue == .warmCream
+            autoColors = newValue == .album
+        }
     }
 
     var manualPalette: Palette {

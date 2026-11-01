@@ -25,7 +25,8 @@ struct NightBackground: View {
     }
 }
 
-/// The current song's cover, blurred and dimmed, with the same grain on top.
+/// The current song's cover as a poster: lightly softened so it stays
+/// recognisable, dimmed just enough for the lyrics to read on top.
 /// Falls back to Night when there's no artwork.
 struct AlbumBackground: View {
     let artwork: NSImage?
@@ -37,13 +38,16 @@ struct AlbumBackground: View {
                     Color.black
                     Image(nsImage: artwork)
                         .resizable()
+                        .interpolation(.high)
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geo.size.width, height: geo.size.height)
-                        .blur(radius: 70)
-                        .saturation(0.9)
-                        .opacity(0.55)
+                        .blur(radius: 6)
                         .clipped()
-                    LinearGradient(colors: [.black.opacity(0.35), .black.opacity(0.75)], startPoint: .top, endPoint: .bottom)
+                    // Even dim, plus a soft vignette, so words stay readable without hiding the cover.
+                    Color.black.opacity(0.42)
+                    RadialGradient(colors: [.clear, .black.opacity(0.55)], center: .center,
+                                   startRadius: min(geo.size.width, geo.size.height) * 0.3,
+                                   endRadius: max(geo.size.width, geo.size.height) * 0.75)
                     Image(nsImage: GrainTexture.image)
                         .resizable(resizingMode: .tile)
                         .opacity(0.035)

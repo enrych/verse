@@ -33,13 +33,12 @@ struct MenuView: View {
 
             Divider()
 
-            Toggle("Starlight colours", isOn: $settings.starlight)
-            if !settings.starlight {
-                Toggle("Colours from album art", isOn: $settings.autoColors)
-                if !settings.autoColors {
-                    ColorPicker("Lyrics", selection: $settings.lyricColor)
-                    ColorPicker("Current word", selection: $settings.highlightColor)
-                }
+            Picker("Colours", selection: $settings.colourSource) {
+                ForEach(ColourSource.allCases) { Text($0.title).tag($0) }
+            }
+            if settings.colourSource == .custom {
+                ColorPicker("Lyrics", selection: $settings.lyricColor)
+                ColorPicker("Current word", selection: $settings.highlightColor)
             }
             LabeledContent("Text size") {
                 Slider(value: $settings.textScale, in: 0.6...1.8)
