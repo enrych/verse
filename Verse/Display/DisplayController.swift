@@ -27,7 +27,8 @@ final class DisplayController {
 
         // Desktop glow (the lock-screen layer draws its own).
         let wantGlow = settings.glowEnabled && !locked && (model.player.isPlaying || settings.glowAlways)
-        updateGlow(on: wantGlow ? NSScreen.screens : [])
+        let glowScreens = NSScreen.screens.filter { settings.glowDisplayID == nil || $0.displayID == settings.glowDisplayID }
+        updateGlow(on: wantGlow ? glowScreens : [])
     }
 
     // MARK: Edge glow

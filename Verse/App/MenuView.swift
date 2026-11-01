@@ -53,6 +53,19 @@ struct MenuView: View {
                     ForEach(GlowMotion.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                if let problem = model.beatProblem {
+                    Text(problem).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
+                } else if settings.glowMotion == .beat {
+                    Text("Listens to your Mac's sound output, never the microphone.")
+                        .font(.caption).foregroundStyle(.tertiary)
+                }
+                Picker("Glow on", selection: $settings.glowDisplayID) {
+                    Text("All displays").tag(CGDirectDisplayID?.none)
+                    ForEach(NSScreen.screens, id: \.displayID) { screen in
+                        Text(screen.localizedName).tag(CGDirectDisplayID?.some(screen.displayID))
+                    }
+                }
+                LabeledContent("Colour balance") { Slider(value: $settings.glowBalance, in: 0.2...0.8) }
                 LabeledContent("Thickness") { Slider(value: $settings.glowThickness, in: 2...40) }
                 LabeledContent("Glow") { Slider(value: $settings.glowStrength, in: 0...1) }
                 Toggle("Glow even when nothing's playing", isOn: $settings.glowAlways)

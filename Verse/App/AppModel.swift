@@ -23,6 +23,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var status = "Waiting for music"
     @Published private(set) var artwork: NSImage?
     @Published private(set) var autoPalette: Palette?
+    /// Why the Beat motion can't listen (permission, macOS version), if so.
+    @Published private(set) var beatProblem: String?
 
     private let lyricsService = LyricsService()
     private let awake = ScreenAwake()
@@ -71,6 +73,16 @@ final class AppModel: ObservableObject {
             .sink { [weak self] in self?.trackChanged($0) }
             .store(in: &bag)
 
+        // Listen to system audio only while the Beat glow is actually in use.
+        Publishers.CombineLatest(settings.$glowEnabled, settings.$glowMotion)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] enabled, motion in
+                let beat = AudioBeat.shared
+                if enabled && motion == .beat { beat.start() } else { beat.stop() }
+                self?.beatProblem = enabled && motion == .beat ? beat.problem : nil
+            }
+            .store(in: &bag)
+
         Publishers.CombineLatest3(player.$isPlaying, settings.$keepAwake, lock.$isLocked)
             .sink { [weak self] playing, keepAwake, locked in
                 self?.awake.set(on: playing && keepAwake, locked: locked && (self?.settings.lockScreenEnabled ?? false))
@@ -85,6 +97,7 @@ final class AppModel: ObservableObject {
             settings.$stageDisplayID.map { _ in () }.eraseToAnyPublisher(),
             settings.$glowEnabled.map { _ in () }.eraseToAnyPublisher(),
             settings.$glowAlways.map { _ in () }.eraseToAnyPublisher(),
+            settings.$glowDisplayID.map { _ in () }.eraseToAnyPublisher(),
             player.$isPlaying.removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
             NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification).map { _ in () }.eraseToAnyPublisher()
         )

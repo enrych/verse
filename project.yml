@@ -26,6 +26,7 @@ targets:
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSUIElement: true
         LSMinimumSystemVersion: "14.0"
+        NSAudioCaptureUsageDescription: Verse listens to your Mac's sound output (never the microphone) so the edge glow can move with the beat.
         NSAppleEventsUsageDescription: Verse reads the current track and playback position from Spotify and Music to show lyrics in time with the song.
     settings:
       base:

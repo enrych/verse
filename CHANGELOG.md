@@ -3,8 +3,10 @@
 ## 0.4.0
 
 - **Edge glow:** ambient light around your screen edges in your Verse colours.
-  Motion: Lyrics (pulses on every sung word), Breathe, or Still. Thickness and
-  glow strength, notch-aware, on the desktop and the lock screen.
+  Motion: Beat (reacts to your Mac's sound output; macOS 14.2+, asks for System
+  Audio Recording once, never the microphone), Lyrics (pulses on every sung word),
+  Breathe, or Still. Two-colour balance, thickness, glow strength, choice of
+  display, notch-aware, on the desktop and the lock screen.
 - **Now-playing card** on the lock screen: cover, title, artist and progress.
 
 ## 0.3.1

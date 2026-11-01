@@ -30,6 +30,8 @@ enum ColourSource: String, CaseIterable, Identifiable {
 }
 
 enum GlowMotion: String, CaseIterable, Identifiable {
+    /// Reacts to the actual audio (system audio tap, macOS 14.2+).
+    case beat
     /// Pulses on every sung word.
     case lyrics
     /// A slow idle swell.
@@ -40,6 +42,7 @@ enum GlowMotion: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
+        case .beat: "Beat"
         case .lyrics: "Lyrics"
         case .breathe: "Breathe"
         case .still: "Still"
@@ -93,6 +96,12 @@ final class Settings: ObservableObject {
     @Published var glowStrength: Double { didSet { defaults.set(glowStrength, forKey: "glowStrength") } }
     /// Keep glowing when nothing is playing.
     @Published var glowAlways: Bool { didSet { defaults.set(glowAlways, forKey: "glowAlways") } }
+    /// Share of the gradient taken by the primary colour (0.2…0.8).
+    @Published var glowBalance: Double { didSet { defaults.set(glowBalance, forKey: "glowBalance") } }
+    /// Display that glows; nil = all displays.
+    @Published var glowDisplayID: CGDirectDisplayID? {
+        didSet { defaults.set(glowDisplayID.map { Int($0) }, forKey: "glowDisplayID") }
+    }
     /// Display that shows the full-screen stage while unlocked. nil = off.
     @Published var stageDisplayID: CGDirectDisplayID? {
         didSet { defaults.set(stageDisplayID.map { Int($0) }, forKey: "stageDisplayID") }
@@ -128,6 +137,7 @@ final class Settings: ObservableObject {
             "glowThickness": 10.0,
             "glowStrength": 0.6,
             "glowAlways": false,
+            "glowBalance": 0.6,
         ])
         style = LyricStyle(rawValue: defaults.string(forKey: "style") ?? "") ?? .constellation
         songOffsets = defaults.dictionary(forKey: "songOffsets") as? [String: Double] ?? [:]
@@ -148,6 +158,8 @@ final class Settings: ObservableObject {
         glowThickness = defaults.double(forKey: "glowThickness")
         glowStrength = defaults.double(forKey: "glowStrength")
         glowAlways = defaults.bool(forKey: "glowAlways")
+        glowBalance = defaults.double(forKey: "glowBalance")
+        glowDisplayID = (defaults.object(forKey: "glowDisplayID") as? Int).map { CGDirectDisplayID($0) }
     }
 
     var colourSource: ColourSource {

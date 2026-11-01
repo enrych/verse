@@ -71,9 +71,10 @@ Cloudflare (Workers KV binding `DOWNLOADS`).
   lyrics spread across the song as a last resort.
 - **Full-screen stage** on any display; **⌃⌥⌘L** toggles it on the display under
   the pointer.
-- **Edge glow:** ambient light around the screen edges in your colours, pulsing
-  with every sung word (or breathing, or still), notch-aware, on the desktop and
-  the lock screen.
+- **Edge glow:** ambient light around the screen edges in your colours that moves
+  with the beat (system audio, never the microphone) or with every sung word, or
+  breathes, or holds still. Two-colour balance, thickness, glow, display choice,
+  notch-aware, on the desktop and the lock screen.
 - **Now-playing card** on the lock screen.
 - **Open at login**, keeps the display awake while music plays, and tells you in
   the menu when a new version is out.

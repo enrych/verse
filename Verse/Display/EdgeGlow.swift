@@ -7,6 +7,8 @@ struct EdgeGlow: View {
     let palette: Palette
     let thickness: Double
     let strength: Double
+    /// Share of the gradient taken by the primary colour (0.2…0.8).
+    var balance: Double = 0.6
     let motion: GlowMotion
     /// Current playback time and lyrics, for the Lyrics motion.
     let time: TimeInterval
@@ -20,8 +22,16 @@ struct EdgeGlow: View {
     var body: some View {
         let level = brightness
         let angle = Angle(degrees: (clock * 9).truncatingRemainder(dividingBy: 360))
+        // Primary takes `balance` of the ring, secondary the rest, with soft hand-offs.
+        let b = min(max(balance, 0.2), 0.8)
         let gradient = AngularGradient(
-            colors: [palette.highlight, palette.lyric, palette.highlight, palette.lyric, palette.highlight],
+            gradient: Gradient(stops: [
+                .init(color: palette.highlight, location: 0),
+                .init(color: palette.highlight, location: b - 0.1),
+                .init(color: palette.lyric, location: b + 0.05),
+                .init(color: palette.lyric, location: 0.9),
+                .init(color: palette.highlight, location: 1),
+            ]),
             center: .center, angle: angle
         )
         let spread = 6 + strength * 46
@@ -46,6 +56,10 @@ struct EdgeGlow: View {
     private var brightness: Double {
         let floor = 0.35 + 0.35 * strength
         switch motion {
+        case .beat:
+            let beat = AudioBeat.shared.read()
+            guard AudioBeat.shared.isRunning else { return floor * 0.8 }
+            return min(1, floor * 0.55 + Double(beat.level) * 0.45 + Double(beat.pulse) * 0.5)
         case .still:
             return floor + 0.3
         case .breathe:
@@ -124,6 +138,7 @@ struct GlowOverlay: View {
                 palette: model.palette,
                 thickness: settings.glowThickness,
                 strength: settings.glowStrength,
+                balance: settings.glowBalance,
                 motion: settings.glowMotion,
                 time: model.playbackTime(at: context.date),
                 lyrics: model.lyrics,
