@@ -131,11 +131,17 @@ struct GlowOverlay: View {
     @ObservedObject private var model = AppModel.shared
     @ObservedObject private var settings = Settings.shared
     @ObservedObject private var player = AppModel.shared.player
+    @ObservedObject private var screenColors = ScreenColorSampler.shared
+
+    private var palette: Palette {
+        if settings.glowFollowsScreen, let sampled = screenColors.palette { return sampled }
+        return model.palette
+    }
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
             EdgeGlow(
-                palette: model.palette,
+                palette: palette,
                 thickness: settings.glowThickness,
                 strength: settings.glowStrength,
                 balance: settings.glowBalance,
@@ -147,6 +153,6 @@ struct GlowOverlay: View {
                 clock: context.date.timeIntervalSinceReferenceDate
             )
         }
-        .animation(.easeInOut(duration: 0.8), value: model.palette)
+        .animation(.easeInOut(duration: 0.8), value: palette)
     }
 }

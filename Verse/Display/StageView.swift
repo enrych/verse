@@ -9,12 +9,15 @@ struct StageView: View {
     @ObservedObject private var settings = Settings.shared
     @ObservedObject private var player = AppModel.shared.player
 
+    /// Lyrics are off on the lock screen when only the glow is in use.
+    private var lyricsOn: Bool { surface == .stage || settings.lockScreenEnabled }
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                background
+                if lyricsOn { background }
 
-                if let lyrics = model.lyrics {
+                if lyricsOn, let lyrics = model.lyrics {
                     TimelineView(.animation(minimumInterval: nil, paused: !player.isPlaying)) { context in
                         let t = model.playbackTime(at: context.date)
                         let gap = lyrics.gap(at: t)
@@ -48,7 +51,7 @@ struct StageView: View {
                 }
             }
             .overlay(alignment: .top) {
-                if surface == .lockScreen, settings.nowPlayingCard, let track = player.track {
+                if surface == .lockScreen, lyricsOn, settings.nowPlayingCard, let track = player.track {
                     NowPlayingCard(track: track, artwork: model.artwork)
                         .padding(.top, settings.lockBackground == .wallpaper ? geo.size.height * 0.24 : 92)
                         .transition(.opacity)

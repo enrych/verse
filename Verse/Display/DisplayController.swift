@@ -17,7 +17,8 @@ final class DisplayController {
     func update(locked: Bool) {
         let settings = model.settings
 
-        if locked && settings.lockScreenEnabled { showLockLayer() } else { hideLockLayer() }
+        // The lock layer carries lyrics, the glow, or both.
+        if locked && (settings.lockScreenEnabled || settings.glowEnabled) { showLockLayer() } else { hideLockLayer() }
 
         if let id = settings.stageDisplayID, let screen = NSScreen.screens.first(where: { $0.displayID == id }) {
             showStage(on: screen)

@@ -13,6 +13,7 @@ struct MenuView: View {
             header
             Divider()
 
+            sectionTitle("Lyrics")
             Picker("Style", selection: $settings.style) {
                 ForEach(LyricStyle.allCases) { Text($0.title).tag($0) }
             }
@@ -47,7 +48,8 @@ struct MenuView: View {
 
             Divider()
 
-            Toggle("Edge glow", isOn: $settings.glowEnabled)
+            sectionTitle("Edge glow")
+            Toggle("Glow around the screen", isOn: $settings.glowEnabled)
             if settings.glowEnabled {
                 Picker("Motion", selection: $settings.glowMotion) {
                     ForEach(GlowMotion.allCases) { Text($0.title).tag($0) }
@@ -64,6 +66,10 @@ struct MenuView: View {
                     ForEach(NSScreen.screens, id: \.displayID) { screen in
                         Text(screen.localizedName).tag(CGDirectDisplayID?.some(screen.displayID))
                     }
+                }
+                Toggle("Follow on-screen colours", isOn: $settings.glowFollowsScreen)
+                if settings.glowFollowsScreen, let problem = ScreenColorSampler.shared.problem {
+                    Text(problem).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
                 }
                 LabeledContent("Colour balance") { Slider(value: $settings.glowBalance, in: 0.2...0.8) }
                 LabeledContent("Thickness") { Slider(value: $settings.glowThickness, in: 2...40) }
@@ -100,6 +106,10 @@ struct MenuView: View {
         }
         .padding(16)
         .frame(width: 330)
+    }
+
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title.uppercased()).font(.caption2.weight(.semibold)).foregroundStyle(.secondary).tracking(0.6)
     }
 
     private var songOffset: Binding<Double> {

@@ -5,8 +5,11 @@
 - **Edge glow:** ambient light around your screen edges in your Verse colours.
   Motion: Beat (reacts to your Mac's sound output; macOS 14.2+, asks for System
   Audio Recording once, never the microphone), Lyrics (pulses on every sung word),
-  Breathe, or Still. Two-colour balance, thickness, glow strength, choice of
+  Breathe, or Still. Colours from your lyrics palette or **following what's on
+  screen** (Screen Recording permission). Two-colour balance, thickness, glow strength, choice of
   display, notch-aware, on the desktop and the lock screen.
+- Lyrics and Edge glow are separate capabilities: use either on its own or both.
+  With lyrics off, the lock screen keeps your wallpaper with just the glow.
 - **Now-playing card** on the lock screen: cover, title, artist and progress.
 
 ## 0.3.1

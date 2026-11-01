@@ -96,6 +96,8 @@ final class Settings: ObservableObject {
     @Published var glowStrength: Double { didSet { defaults.set(glowStrength, forKey: "glowStrength") } }
     /// Keep glowing when nothing is playing.
     @Published var glowAlways: Bool { didSet { defaults.set(glowAlways, forKey: "glowAlways") } }
+    /// Glow takes its colours from what's on screen instead of the lyrics colours.
+    @Published var glowFollowsScreen: Bool { didSet { defaults.set(glowFollowsScreen, forKey: "glowFollowsScreen") } }
     /// Share of the gradient taken by the primary colour (0.2…0.8).
     @Published var glowBalance: Double { didSet { defaults.set(glowBalance, forKey: "glowBalance") } }
     /// Display that glows; nil = all displays.
@@ -138,6 +140,7 @@ final class Settings: ObservableObject {
             "glowStrength": 0.6,
             "glowAlways": false,
             "glowBalance": 0.6,
+            "glowFollowsScreen": false,
         ])
         style = LyricStyle(rawValue: defaults.string(forKey: "style") ?? "") ?? .constellation
         songOffsets = defaults.dictionary(forKey: "songOffsets") as? [String: Double] ?? [:]
@@ -159,6 +162,7 @@ final class Settings: ObservableObject {
         glowStrength = defaults.double(forKey: "glowStrength")
         glowAlways = defaults.bool(forKey: "glowAlways")
         glowBalance = defaults.double(forKey: "glowBalance")
+        glowFollowsScreen = defaults.bool(forKey: "glowFollowsScreen")
         glowDisplayID = (defaults.object(forKey: "glowDisplayID") as? Int).map { CGDirectDisplayID($0) }
     }
 

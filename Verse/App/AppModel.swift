@@ -73,6 +73,14 @@ final class AppModel: ObservableObject {
             .sink { [weak self] in self?.trackChanged($0) }
             .store(in: &bag)
 
+        // Sample the screen only while the glow follows on-screen colours.
+        Publishers.CombineLatest3(settings.$glowEnabled, settings.$glowFollowsScreen, settings.$glowDisplayID)
+            .receive(on: RunLoop.main)
+            .sink { enabled, follow, display in
+                if enabled && follow { ScreenColorSampler.shared.start(displayID: display) } else { ScreenColorSampler.shared.stop() }
+            }
+            .store(in: &bag)
+
         // Listen to system audio only while the Beat glow is actually in use.
         Publishers.CombineLatest(settings.$glowEnabled, settings.$glowMotion)
             .receive(on: RunLoop.main)
