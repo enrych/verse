@@ -32,7 +32,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.enrych.verse
         PRODUCT_NAME: Verse
         # The app version. Bump this before releasing; the release workflow also stamps it.
-        MARKETING_VERSION: "0.3.0"
+        MARKETING_VERSION: "0.3.1"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
         CODE_SIGN_IDENTITY: "-"

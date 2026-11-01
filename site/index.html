@@ -97,6 +97,12 @@
   .login .fine { margin: 12px 0 0; font: 500 12px/1.4 var(--sys); color: rgba(255,255,255,.5); }
   .login .fine a { color: rgba(255,255,255,.72); text-decoration: none; }
   .login .fine a:hover { color: #fff; }
+  .login .brew { all: unset; cursor: pointer; margin-top: 8px; font: 500 12px/1.4 var(--sys); color: rgba(255,255,255,.42); }
+  .login .brew code { font: 400 11.5px/1.4 var(--mono); color: rgba(255,255,255,.62); padding: 2px 7px; border-radius: 6px;
+    background: rgba(255,255,255,.06); }
+  .login .brew:hover code { color: #fff; background: rgba(255,255,255,.1); }
+  .login .brew:focus-visible { outline: 2px solid #fff; outline-offset: 3px; border-radius: 6px; }
+  .login .brew-done { color: var(--star); }
   .lock-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px var(--gutter) 22px; display: flex; flex-wrap: wrap;
     gap: 12px 20px; align-items: center; justify-content: space-between; z-index: 2;
     background: linear-gradient(to top, rgba(0,0,0,.85), rgba(0,0,0,0)); }
@@ -225,6 +231,9 @@
       <i aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6h8M6.5 2.5 10 6l-3.5 3.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
     </a>
     <p class="fine"><a href="https://github.com/enrych/verse">View source on GitHub</a> · Free · macOS 14+<span data-version></span></p>
+    <button class="brew" type="button" data-copy="brew install --cask enrych/tap/verse" title="Copy">
+      <span class="brew-label">or</span> <code>brew install --cask enrych/tap/verse</code> <span class="brew-done" aria-live="polite"></span>
+    </button>
   </div>
 </header>
 
@@ -278,6 +287,13 @@
     };
     draw(); addEventListener("resize", draw);
   })();
+  // Click the brew command to copy it.
+  document.querySelectorAll("[data-copy]").forEach(btn => btn.addEventListener("click", async () => {
+    const done = btn.querySelector(".brew-done");
+    try { await navigator.clipboard.writeText(btn.dataset.copy); done.textContent = "Copied"; }
+    catch { done.textContent = "Select and copy"; }
+    setTimeout(() => (done.textContent = ""), 1600);
+  }));
   // Current release, shown next to the download.
   fetch("https://api.github.com/repos/enrych/verse/releases/latest")
     .then(r => (r.ok ? r.json() : null))

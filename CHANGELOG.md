@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+
+- **Homebrew:** install with `brew install --cask enrych/tap/verse` (no security prompt) and update with `brew upgrade --cask verse`.
+- No changes to the app itself.
+
 ## 0.3.0
 
 - **Focus style:** one big line at a time, each word lighting up as it's sung.
