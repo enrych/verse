@@ -1,9 +1,9 @@
 # Verse
 
-Song lyrics on your Mac's lock screen. A free, open-source macOS app that
-shows the lyrics of whatever you're playing, synced word by word, on your lock
-screen or full-screen on any display. How the words appear is a **style**; v0.1
-ships with **Constellation**, and more styles are planned.
+**Your Lyrics, Your Way.**
+
+The song you're playing, word by word, on your Mac's lock screen or any display.
+Free and open source.
 
 Lock screen lyrics · Spotify and Apple Music · macOS 14+ · Apple silicon and Intel
 
