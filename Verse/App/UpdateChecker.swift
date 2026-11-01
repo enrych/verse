@@ -16,6 +16,9 @@ final class UpdateChecker: ObservableObject {
     }
 
     func start() {
+        #if DEBUG
+        return  // Builds run from Xcode don't nag about updates.
+        #endif
         task?.cancel()
         task = Task { [weak self] in
             while !Task.isCancelled {
