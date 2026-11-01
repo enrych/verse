@@ -110,6 +110,27 @@ enum LyricsParser {
         }
     }
 
+    /// Plain (untimed) lyrics: lines are spaced evenly between 8% and 92% of the
+    /// song, blank lines become short pauses, and words are estimated per line.
+    static func spreadPlain(_ text: String, duration: TimeInterval) -> [LyricLine] {
+        let raw = text.split(separator: "\n", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        let weights = raw.map { $0.isEmpty ? 0.5 : 1.0 }
+        let total = weights.reduce(0, +)
+        guard total > 0 else { return [] }
+        let start = duration * 0.08, span = duration * 0.84
+        var t = start
+        var lines: [LyricLine] = []
+        for (i, line) in raw.enumerated() {
+            let length = span * weights[i] / total
+            if !line.isEmpty {
+                let words = estimatedWords(line, start: t, next: t + length)
+                lines.append(LyricLine(start: t, end: words.last?.end ?? t + length, words: words))
+            }
+            t += length
+        }
+        return lines
+    }
+
     /// Words keep trailing spaces. Text with no spaces (e.g. CJK) splits per character.
     static func tokenize(_ text: String) -> [String] {
         let trimmed = text.trimmingCharacters(in: .whitespaces)

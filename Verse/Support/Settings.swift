@@ -1,11 +1,28 @@
 import AppKit
 import SwiftUI
 
+enum LyricStyle: String, CaseIterable, Identifiable {
+    /// Words land as stars joined in sung order.
+    case constellation
+    /// One big line at a time; each word lights up as it's sung.
+    case focus
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .constellation: "Constellation"
+        case .focus: "Focus"
+        }
+    }
+}
+
 enum LockBackground: String, CaseIterable, Identifiable {
     /// Near-black with faint dust stars and grain (default).
     case night
     /// Plain black.
     case black
+    /// The current song's cover, blurred and dimmed.
+    case album
     /// The user's own wallpaper, darkened (lock screen only).
     case wallpaper
 
@@ -14,6 +31,7 @@ enum LockBackground: String, CaseIterable, Identifiable {
         switch self {
         case .night: "Night"
         case .black: "Black"
+        case .album: "Album art"
         case .wallpaper: "Wallpaper"
         }
     }
@@ -25,6 +43,9 @@ final class Settings: ObservableObject {
     static let shared = Settings()
     private let defaults: UserDefaults
 
+    @Published var style: LyricStyle { didSet { defaults.set(style.rawValue, forKey: "style") } }
+    /// Extra sync offset per song (ms), keyed by Track.cacheKey.
+    @Published var songOffsets: [String: Double] { didSet { defaults.set(songOffsets, forKey: "songOffsets") } }
     @Published var lockScreenEnabled: Bool { didSet { defaults.set(lockScreenEnabled, forKey: "lockScreenEnabled") } }
     /// Warm starlight colours instead of the album/manual palette.
     @Published var starlight: Bool { didSet { defaults.set(starlight, forKey: "starlight") } }
@@ -47,6 +68,7 @@ final class Settings: ObservableObject {
         let defaults = UserDefaults.standard
         self.defaults = defaults
         defaults.register(defaults: [
+            "style": LyricStyle.constellation.rawValue,
             "starlight": true,
             "lockBackground": LockBackground.night.rawValue,
             "lockScreenEnabled": true,
@@ -58,6 +80,8 @@ final class Settings: ObservableObject {
             "syncOffsetMs": 150.0,
             "keepAwake": true,
         ])
+        style = LyricStyle(rawValue: defaults.string(forKey: "style") ?? "") ?? .constellation
+        songOffsets = defaults.dictionary(forKey: "songOffsets") as? [String: Double] ?? [:]
         starlight = defaults.bool(forKey: "starlight")
         lockScreenEnabled = defaults.bool(forKey: "lockScreenEnabled")
         lockBackground = LockBackground(rawValue: defaults.string(forKey: "lockBackground") ?? "") ?? .night

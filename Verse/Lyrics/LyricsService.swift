@@ -28,7 +28,7 @@ final class LyricsService {
             guard !Task.isCancelled else { return nil }
             guard let found = try? await provider.lyrics(for: track) else { continue }
             if found.timing == .word { fallback = found; break }
-            if fallback == nil { fallback = found }
+            if fallback == nil || (fallback?.timing == .estimated && found.timing == .line) { fallback = found }
         }
 
         memory[track.cacheKey] = fallback

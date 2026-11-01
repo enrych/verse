@@ -23,6 +23,8 @@ struct Lyrics: Codable, Hashable {
         case word
         /// Line timings only; word timings are estimated.
         case line
+        /// Plain lyrics with no timings; lines are spread across the song.
+        case estimated
     }
 
     var lines: [LyricLine]

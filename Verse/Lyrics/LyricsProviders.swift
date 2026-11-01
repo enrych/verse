@@ -125,6 +125,7 @@ struct LRCLIBProvider: LyricsProvider {
         var artistName: String?
         var duration: Double?
         var syncedLyrics: String?
+        var plainLyrics: String?
     }
 
     func lyrics(for track: Track) async throws -> Lyrics? {
@@ -133,8 +134,10 @@ struct LRCLIBProvider: LyricsProvider {
         if track.duration > 0 { query.append(("duration", String(Int(track.duration.rounded())))) }
 
         var synced: String?
+        var plain: String?
         if let exact: Record = try await HTTP.get(HTTP.url("https://lrclib.net/api/get", query), headers: headers) {
             synced = exact.syncedLyrics
+            plain = exact.plainLyrics
         }
         if synced == nil {
             let results: [Record] = try await HTTP.get(
@@ -147,7 +150,12 @@ struct LRCLIBProvider: LyricsProvider {
                         < TrackMatch.score(title: b.trackName ?? "", artists: [b.artistName ?? ""], duration: b.duration, against: track)
                 }?.syncedLyrics
         }
-        guard let synced else { return nil }
+        guard let synced else {
+            // No timings anywhere: spread plain lyrics across the song so there's still something to read.
+            guard let plain, track.duration > 0 else { return nil }
+            let lines = LyricsParser.spreadPlain(plain, duration: track.duration)
+            return lines.isEmpty ? nil : Lyrics(lines: lines, timing: .estimated, source: name)
+        }
         let parsed = LyricsParser.parseLRC(synced)
         guard !parsed.lines.isEmpty else { return nil }
         return Lyrics(lines: parsed.lines, timing: parsed.wordTimed ? .word : .line, source: name)

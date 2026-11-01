@@ -25,6 +25,40 @@ struct NightBackground: View {
     }
 }
 
+/// The current song's cover, blurred and dimmed, with the same grain on top.
+/// Falls back to Night when there's no artwork.
+struct AlbumBackground: View {
+    let artwork: NSImage?
+
+    var body: some View {
+        if let artwork {
+            GeometryReader { geo in
+                ZStack {
+                    Color.black
+                    Image(nsImage: artwork)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .blur(radius: 70)
+                        .saturation(0.9)
+                        .opacity(0.55)
+                        .clipped()
+                    LinearGradient(colors: [.black.opacity(0.35), .black.opacity(0.75)], startPoint: .top, endPoint: .bottom)
+                    Image(nsImage: GrainTexture.image)
+                        .resizable(resizingMode: .tile)
+                        .opacity(0.035)
+                        .blendMode(.screen)
+                }
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+            .transition(.opacity)
+        } else {
+            NightBackground()
+        }
+    }
+}
+
 /// A few hundred tiny, dim specks, placed deterministically so they never jump.
 private struct DustStars: View {
     var body: some View {
