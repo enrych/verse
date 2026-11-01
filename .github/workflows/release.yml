@@ -24,6 +24,8 @@ permissions:
 jobs:
   build:
     runs-on: macos-15
+    env:
+      TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -76,3 +78,16 @@ jobs:
           fi
           gh release create "v$VERSION" Verse.dmg Verse.dmg.sha256 \
             --target "$GITHUB_SHA" --title "Verse $VERSION" --generate-notes
+
+      # Keep the Homebrew cask (enrych/homebrew-tap) in step with each release.
+      # Needs a TAP_TOKEN secret with write access to that repo; skipped otherwise.
+      - name: Update Homebrew cask
+        if: env.VERSION != '' && env.TAP_TOKEN != ''
+        run: |
+          SHA=$(shasum -a 256 Verse.dmg | cut -d' ' -f1)
+          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/enrych/homebrew-tap.git" tap
+          cd tap
+          sed -i '' -E "s/^  version \".*\"/  version \"${VERSION}\"/; s/^  sha256 \".*\"/  sha256 \"${SHA}\"/" Casks/verse.rb
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git commit -am "Verse ${VERSION}" && git push

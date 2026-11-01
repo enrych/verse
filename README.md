@@ -13,6 +13,14 @@ What's new: see [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
 
+With Homebrew (no security prompt, easy updates):
+
+```bash
+brew install --cask enrych/tap/verse
+```
+
+Or download the DMG:
+
 1. Open `Verse.dmg` and drag Verse into Applications.
 2. Verse is ad-hoc signed but not notarised, so the first time **right-click → Open**
    (or run `xattr -dr com.apple.quarantine /Applications/Verse.app`).
