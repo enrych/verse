@@ -115,7 +115,14 @@ struct MenuView: View {
                 if let track = player.track {
                     Text("\(track.artist) · \(track.player.displayName)").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
-                Text(model.status).font(.caption).foregroundStyle(.tertiary)
+                HStack(spacing: 6) {
+                    Text(model.status).font(.caption).foregroundStyle(.tertiary)
+                    if model.lyricsMissing {
+                        Button("Retry") { model.retryLyrics() }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                    }
+                }
             }
         }
         if let denied = player.permissionDenied {

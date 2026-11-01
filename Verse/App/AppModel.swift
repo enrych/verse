@@ -90,28 +90,53 @@ final class AppModel: ObservableObject {
         .store(in: &bag)
     }
 
+    /// True when the last lookup for this song came back empty.
+    @Published private(set) var lyricsMissing = false
+
+    /// Ask the providers again for the current song (menu: Retry).
+    func retryLyrics() {
+        guard let track = player.track else { return }
+        lyricsService.forget(track)
+        loadLyrics(for: track)
+    }
+
+    private func loadLyrics(for track: Track, attempt: Int = 0) {
+        lyricsTask?.cancel()
+        lyricsMissing = false
+        status = "Finding lyrics…"
+        lyricsTask = Task { [weak self] in
+            guard let self else { return }
+            let result = await lyricsService.lyrics(for: track)
+            guard !Task.isCancelled, player.track == track else { return }
+            lyrics = result.lyrics
+            lyricsMissing = result.lyrics == nil
+            if let lyrics = result.lyrics {
+                switch lyrics.timing {
+                case .word: status = "\(lyrics.source) · word sync"
+                case .line: status = "\(lyrics.source) · line sync"
+                case .estimated: status = "\(lyrics.source) · plain lyrics, timing estimated"
+                }
+            } else {
+                status = result.problem.map { "No lyrics yet · \($0)" } ?? "No lyrics found for this song"
+                // A service was down or busy: try again once by ourselves.
+                if result.problem != nil, attempt == 0 {
+                    try? await Task.sleep(for: .seconds(20))
+                    guard !Task.isCancelled, player.track == track, lyrics == nil else { return }
+                    loadLyrics(for: track, attempt: 1)
+                }
+            }
+        }
+    }
+
     private func trackChanged(_ track: Track?) {
         lyricsTask?.cancel()
         artworkTask?.cancel()
         lyrics = nil
         artwork = nil
         autoPalette = nil
-        guard let track else { status = "Nothing playing"; return }
+        guard let track else { status = "Nothing playing"; lyricsMissing = false; return }
 
-        status = "Finding lyrics…"
-        lyricsTask = Task { [weak self] in
-            guard let self else { return }
-            let found = await lyricsService.lyrics(for: track)
-            guard !Task.isCancelled, player.track == track else { return }
-            lyrics = found
-            status = found.map { lyrics -> String in
-                switch lyrics.timing {
-                case .word: "\(lyrics.source) · word sync"
-                case .line: "\(lyrics.source) · line sync"
-                case .estimated: "\(lyrics.source) · plain lyrics, timing estimated"
-                }
-            } ?? "No lyrics found"
-        }
+        loadLyrics(for: track)
         artworkTask = Task { [weak self] in
             guard let self else { return }
             let image = await player.artwork(for: track)

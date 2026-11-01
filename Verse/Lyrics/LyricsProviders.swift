@@ -5,15 +5,35 @@ protocol LyricsProvider {
     func lyrics(for track: Track) async throws -> Lyrics?
 }
 
+/// A provider couldn't answer (network error, busy server). Different from "no lyrics".
+struct LyricsLookupError: Error {
+    let message: String
+}
+
 enum HTTP {
-    static func get<T: Decodable>(_ url: URL, headers: [String: String] = [:]) async throws -> T? {
-        var request = URLRequest(url: url, timeoutInterval: 10)
-        for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
-        if http.statusCode == 404 { return nil }
-        guard (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
-        return try JSONDecoder().decode(T.self, from: data)
+    /// GET + decode JSON. Returns nil on 404; retries once on timeouts, 429 and 5xx;
+    /// throws `LyricsLookupError` if the service still can't answer.
+    static func get<T: Decodable>(_ url: URL, headers: [String: String] = [:], service: String) async throws -> T? {
+        var lastProblem = "unreachable"
+        for attempt in 0..<2 {
+            if attempt > 0 { try? await Task.sleep(for: .milliseconds(900)) }
+            var request = URLRequest(url: url, timeoutInterval: 10)
+            for (key, value) in headers { request.setValue(value, forHTTPHeaderField: key) }
+            do {
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else { lastProblem = "bad response"; continue }
+                if http.statusCode == 404 { return nil }
+                if http.statusCode == 429 || http.statusCode >= 500 { lastProblem = "busy"; continue }
+                guard (200..<300).contains(http.statusCode) else { lastProblem = "error \(http.statusCode)"; continue }
+                return try JSONDecoder().decode(T.self, from: data)
+            } catch is DecodingError {
+                lastProblem = "unexpected reply"
+            } catch {
+                if Task.isCancelled { throw error }
+                lastProblem = (error as? URLError)?.code == .timedOut ? "timed out" : "unreachable"
+            }
+        }
+        throw LyricsLookupError(message: "\(service) \(lastProblem)")
     }
 
     static func url(_ base: String, _ query: [(String, String)]) -> URL {
@@ -25,16 +45,43 @@ enum HTTP {
 
 /// Fuzzy matching between what the player reports and what a provider returns.
 enum TrackMatch {
+    private static let decorations = [" feat. ", " feat ", " ft. ", " ft ", " featuring ", " with "]
+
+    /// Comparable form: lowercase letters/digits only, without "(feat. …)", "[Live]",
+    /// " - 2011 Remaster" and similar.
     static func normalize(_ s: String) -> String {
-        var s = s.lowercased()
-        // Drop "(feat. …)", "[Remastered]", " - 2011 Remaster" and similar decorations.
+        clean(s).lowercased().filter { $0.isLetter || $0.isNumber }
+    }
+
+    /// Readable title for searching: same decorations removed, original casing kept.
+    static func clean(_ s: String) -> String {
+        var s = s
         for (open, close) in [("(", ")"), ("[", "]")] {
             while let a = s.range(of: open), let b = s.range(of: close, range: a.upperBound..<s.endIndex) {
                 s.removeSubrange(a.lowerBound..<b.upperBound)
             }
         }
         if let dash = s.range(of: " - ") { s = String(s[..<dash.lowerBound]) }
-        return s.filter { $0.isLetter || $0.isNumber }
+        for d in decorations {
+            if let r = s.range(of: d, options: .caseInsensitive) { s = String(s[..<r.lowerBound]) }
+        }
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// First credited artist: "A, B & C feat. D" → "A".
+    static func primaryArtist(_ s: String) -> String {
+        var s = s
+        for sep in [",", " & ", " x ", " X "] + decorations {
+            if let r = s.range(of: sep, options: .caseInsensitive) { s = String(s[..<r.lowerBound]) }
+        }
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Search queries to try, most specific first, without duplicates.
+    static func queries(for track: Track) -> [String] {
+        let title = clean(track.title), artist = primaryArtist(track.artist)
+        var seen = Set<String>()
+        return ["\(title) \(artist)", "\(track.title) \(track.artist)", title].filter { seen.insert($0.lowercased()).inserted }
     }
 
     static func score(title: String, artists: [String], duration: TimeInterval?, against track: Track) -> Int {
@@ -42,11 +89,12 @@ enum TrackMatch {
         guard !a.isEmpty, !b.isEmpty else { return 0 }
         var score = a == b ? 4 : (a.contains(b) || b.contains(a) ? 2 : 0)
         guard score > 0 else { return 0 }
-        let wanted = normalize(track.artist)
-        if artists.map(normalize).contains(where: { !$0.isEmpty && (wanted.contains($0) || $0.contains(wanted)) }) { score += 3 }
-        if let d = duration, track.duration > 0 {
+        let wanted = normalize(track.artist), primary = normalize(primaryArtist(track.artist))
+        let names = artists.flatMap { [normalize($0), normalize(primaryArtist($0))] }.filter { !$0.isEmpty }
+        if names.contains(where: { wanted.contains($0) || $0.contains(primary) }) { score += 3 }
+        if let d = duration, d > 0, track.duration > 0 {
             let diff = abs(d - track.duration)
-            score += diff < 3 ? 3 : (diff < 8 ? 1 : -3)
+            score += diff < 3 ? 3 : (diff < 8 ? 1 : (diff < 20 ? -1 : -3))
         }
         return score
     }
@@ -59,6 +107,7 @@ struct NetEaseProvider: LyricsProvider {
     private let headers = [
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko)",
         "Referer": "https://music.163.com/",
+        "Cookie": "os=pc; appver=2.10.13",
     ]
 
     private struct SearchResponse: Decodable {
@@ -70,44 +119,47 @@ struct NetEaseProvider: LyricsProvider {
             var artists: [Artist]?
             var duration: Double?
         }
+        var code: Int?
         var result: Result?
     }
 
     private struct LyricResponse: Decodable {
         struct Body: Decodable { var lyric: String? }
+        var code: Int?
         var lrc: Body?
         var yrc: Body?
     }
 
     func lyrics(for track: Track) async throws -> Lyrics? {
-        let searchURL = HTTP.url("https://music.163.com/api/search/get", [
-            ("s", "\(track.title) \(track.artist)"), ("type", "1"), ("limit", "10"),
-        ])
-        guard let search: SearchResponse = try await HTTP.get(searchURL, headers: headers) else { return nil }
-        let ranked = (search.result?.songs ?? [])
-            .map { song in
-                (song, TrackMatch.score(title: song.name,
-                                        artists: song.artists?.map(\.name) ?? [],
-                                        duration: song.duration.map { $0 / 1000 },
-                                        against: track))
+        // Gather candidates across a few query variants, best match first.
+        var candidates: [(id: Int, score: Int)] = []
+        for query in TrackMatch.queries(for: track) {
+            let url = HTTP.url("https://music.163.com/api/search/get", [("s", query), ("type", "1"), ("limit", "10")])
+            guard let search: SearchResponse = try await HTTP.get(url, headers: headers, service: name) else { continue }
+            if let code = search.code, code != 200 { throw LyricsLookupError(message: "\(name) refused (\(code))") }
+            for song in search.result?.songs ?? [] where !candidates.contains(where: { $0.id == song.id }) {
+                let score = TrackMatch.score(title: song.name, artists: song.artists?.map(\.name) ?? [],
+                                             duration: song.duration.map { $0 / 1000 }, against: track)
+                if score >= 5 { candidates.append((song.id, score)) }
             }
-            .filter { $0.1 >= 5 }
-            .sorted { $0.1 > $1.1 }
-        guard let song = ranked.first?.0 else { return nil }
-
-        let lyricURL = HTTP.url("https://music.163.com/api/song/lyric/v1", [
-            ("id", String(song.id)), ("lv", "-1"), ("kv", "-1"), ("tv", "-1"), ("yv", "-1"),
-        ])
-        guard let body: LyricResponse = try await HTTP.get(lyricURL, headers: headers) else { return nil }
-
-        if let yrc = body.yrc?.lyric {
-            let lines = LyricsParser.parseYRC(yrc)
-            if !lines.isEmpty { return Lyrics(lines: lines, timing: .word, source: name) }
+            if candidates.contains(where: { $0.score >= 9 }) { break }   // confident match; no need to search more
         }
-        if let lrc = body.lrc?.lyric {
-            let parsed = LyricsParser.parseLRC(lrc)
-            if !parsed.lines.isEmpty {
-                return Lyrics(lines: parsed.lines, timing: parsed.wordTimed ? .word : .line, source: name)
+
+        // Several versions of a song (single, album, deluxe) often exist; take the first with lyrics.
+        for candidate in candidates.sorted(by: { $0.score > $1.score }).prefix(3) {
+            let url = HTTP.url("https://music.163.com/api/song/lyric/v1", [
+                ("id", String(candidate.id)), ("lv", "-1"), ("kv", "-1"), ("tv", "-1"), ("yv", "-1"),
+            ])
+            guard let body: LyricResponse = try await HTTP.get(url, headers: headers, service: name) else { continue }
+            if let yrc = body.yrc?.lyric {
+                let lines = LyricsParser.parseYRC(yrc)
+                if !lines.isEmpty { return Lyrics(lines: lines, timing: .word, source: name) }
+            }
+            if let lrc = body.lrc?.lyric {
+                let parsed = LyricsParser.parseLRC(lrc)
+                if !parsed.lines.isEmpty {
+                    return Lyrics(lines: parsed.lines, timing: parsed.wordTimed ? .word : .line, source: name)
+                }
             }
         }
         return nil
@@ -129,26 +181,33 @@ struct LRCLIBProvider: LyricsProvider {
     }
 
     func lyrics(for track: Track) async throws -> Lyrics? {
-        var query = [("track_name", track.title), ("artist_name", track.artist)]
+        let title = TrackMatch.clean(track.title), artist = TrackMatch.primaryArtist(track.artist)
+        var query = [("track_name", title), ("artist_name", artist)]
         if !track.album.isEmpty { query.append(("album_name", track.album)) }
         if track.duration > 0 { query.append(("duration", String(Int(track.duration.rounded())))) }
 
         var synced: String?
         var plain: String?
-        if let exact: Record = try await HTTP.get(HTTP.url("https://lrclib.net/api/get", query), headers: headers) {
+        if let exact: Record = try await HTTP.get(HTTP.url("https://lrclib.net/api/get", query), headers: headers, service: name) {
             synced = exact.syncedLyrics
             plain = exact.plainLyrics
         }
         if synced == nil {
-            let results: [Record] = try await HTTP.get(
-                HTTP.url("https://lrclib.net/api/search", [("track_name", track.title), ("artist_name", track.artist)]),
-                headers: headers) ?? []
-            synced = results
-                .filter { $0.syncedLyrics != nil }
-                .max { a, b in
-                    TrackMatch.score(title: a.trackName ?? "", artists: [a.artistName ?? ""], duration: a.duration, against: track)
-                        < TrackMatch.score(title: b.trackName ?? "", artists: [b.artistName ?? ""], duration: b.duration, against: track)
-                }?.syncedLyrics
+            // Fuzzy: by fields, then free text.
+            var results: [Record] = try await HTTP.get(
+                HTTP.url("https://lrclib.net/api/search", [("track_name", title), ("artist_name", artist)]),
+                headers: headers, service: name) ?? []
+            if results.isEmpty {
+                results = try await HTTP.get(HTTP.url("https://lrclib.net/api/search", [("q", "\(title) \(artist)")]),
+                                             headers: headers, service: name) ?? []
+            }
+            let best = results
+                .map { ($0, TrackMatch.score(title: $0.trackName ?? "", artists: [$0.artistName ?? ""], duration: $0.duration, against: track)) }
+                .filter { $0.1 >= 5 }
+                .sorted { a, b in (a.0.syncedLyrics != nil ? 1 : 0, a.1) > (b.0.syncedLyrics != nil ? 1 : 0, b.1) }
+                .first?.0
+            synced = best?.syncedLyrics
+            if plain == nil { plain = best?.plainLyrics }
         }
         guard let synced else {
             // No timings anywhere: spread plain lyrics across the song so there's still something to read.
