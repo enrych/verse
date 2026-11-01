@@ -1,0 +1,5 @@
+#!/bin/sh
+# After `git pull`: regenerate if any files were added, removed or renamed, or project.yml changed.
+if git diff --name-status ORIG_HEAD HEAD 2>/dev/null | grep -qE '^(A|D|R)|project\.yml'; then
+  "$(git rev-parse --show-toplevel)/.githooks/regen"
+fi

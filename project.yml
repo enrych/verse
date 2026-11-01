@@ -1,0 +1,48 @@
+name: Verse
+options:
+  bundleIdPrefix: com.enrych
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  SkyLightWindow:
+    url: https://github.com/Lakr233/SkyLightWindow
+    revision: a28588bc5222b8daf6c4b46afb462a5d31495685
+
+targets:
+  Verse:
+    type: application
+    platform: macOS
+    sources:
+      - Verse
+    dependencies:
+      - package: SkyLightWindow
+    info:
+      path: Verse/Support/Info.plist
+      properties:
+        CFBundleDisplayName: Verse
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+        NSAppleEventsUsageDescription: Verse reads the current track and playback position from Spotify and Music to show lyrics in time with the song.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.enrych.verse
+        PRODUCT_NAME: Verse
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+schemes:
+  Verse:
+    build:
+      targets:
+        Verse: all
+    run:
+      config: Debug
+    archive:
+      config: Release

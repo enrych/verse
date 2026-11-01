@@ -1,0 +1,6 @@
+#!/bin/sh
+# After switching branches ($3 = 1): regenerate if the file list or project.yml differ.
+[ "$3" = "1" ] || exit 0
+if git diff --name-status "$1" "$2" 2>/dev/null | grep -qE '^(A|D|R)|project\.yml'; then
+  "$(git rev-parse --show-toplevel)/.githooks/regen"
+fi

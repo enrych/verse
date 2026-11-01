@@ -1,0 +1,78 @@
+name: Release
+
+# Publish a release either way:
+#   - push a tag like v0.1.0, or
+#   - Actions → Release → Run workflow, entering a version (e.g. 0.1.0).
+# Run it with the version left empty to build a test DMG without publishing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0). Leave empty for a test build."
+        required: false
+        default: ""
+      replace:
+        description: "Replace the release (and tag) if this version already exists"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen
+
+      - name: Build (universal, ad-hoc signed)
+        run: |
+          xcodebuild -project Verse.xcodeproj -scheme Verse -configuration Release \
+            -derivedDataPath build -destination 'generic/platform=macOS' \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGN_IDENTITY=- \
+            build | tail -n 40
+
+      - name: Stamp version and package DMG
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          APP=build/Build/Products/Release/Verse.app
+          VERSION="${INPUT_VERSION#v}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [[ -n "$VERSION" ]]; then
+            plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
+            plutil -replace CFBundleVersion -string "$GITHUB_RUN_NUMBER" "$APP/Contents/Info.plist"
+          fi
+          codesign --force --deep --sign - "$APP"
+          mkdir dmg
+          cp -R "$APP" dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname Verse -srcfolder dmg -ov -format UDZO Verse.dmg
+          shasum -a 256 Verse.dmg | tee Verse.dmg.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Verse
+          path: |
+            Verse.dmg
+            Verse.dmg.sha256
+
+      - name: Publish release
+        if: env.VERSION != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPLACE: ${{ inputs.replace }}
+        run: |
+          if [[ "$REPLACE" == "true" ]]; then
+            gh release delete "v$VERSION" --cleanup-tag --yes || true
+          fi
+          gh release create "v$VERSION" Verse.dmg Verse.dmg.sha256 \
+            --target "$GITHUB_SHA" --title "Verse $VERSION" --generate-notes
