@@ -9,6 +9,8 @@ Lock screen lyrics · Spotify and Apple Music · macOS 14+ · Apple silicon and 
 
 **[Download the latest release](https://verse-6gy.pages.dev/download)**
 
+What's new: see [CHANGELOG.md](CHANGELOG.md).
+
 ## Install
 
 1. Open `Verse.dmg` and drag Verse into Applications.
