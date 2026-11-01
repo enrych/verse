@@ -48,6 +48,22 @@ output directory `site`. `functions/download.js` serves `/download`: the latest
 release's DMG, fetched from GitHub once per version and then served from
 Cloudflare (Workers KV binding `DOWNLOADS`).
 
+## Features
+
+- **Styles:** Constellation (words land as stars joined in sung order) and Focus
+  (one big line, each word lighting up as it's sung).
+- **Backgrounds:** Night (default: near-black, faint dust stars, grain), Black,
+  Album art (the song's cover, blurred), or your Wallpaper on the lock screen.
+- **Quiet moments:** during intros and long breaks the next line is previewed as
+  faint stars and the sky gently comes alive; pausing dims the lyrics.
+- **Sync:** a global offset plus a per-song nudge that's remembered.
+- **Lyrics:** word-synced where available, line-synced otherwise, and plain
+  lyrics spread across the song as a last resort.
+- **Full-screen stage** on any display; **⌃⌥⌘L** toggles it on the display under
+  the pointer.
+- **Open at login**, keeps the display awake while music plays, and tells you in
+  the menu when a new version is out.
+
 ## How it works
 
 ```

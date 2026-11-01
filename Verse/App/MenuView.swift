@@ -4,22 +4,31 @@ struct MenuView: View {
     @ObservedObject private var model = AppModel.shared
     @ObservedObject private var settings = Settings.shared
     @ObservedObject private var player = AppModel.shared.player
+    @ObservedObject private var updates = AppModel.shared.updates
+    @ObservedObject private var login = AppModel.shared.launchAtLogin
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            if let version = updates.available { updateBanner(version) }
             header
             Divider()
 
-            Toggle("Show on lock screen", isOn: $settings.lockScreenEnabled)
+            Picker("Style", selection: $settings.style) {
+                ForEach(LyricStyle.allCases) { Text($0.title).tag($0) }
+            }
             Picker("Background", selection: $settings.lockBackground) {
                 ForEach(LockBackground.allCases) { Text($0.title).tag($0) }
             }
-
-            Picker("Full-screen stage", selection: $settings.stageDisplayID) {
-                Text("Off").tag(CGDirectDisplayID?.none)
-                ForEach(NSScreen.screens, id: \.displayID) { screen in
-                    Text(screen.localizedName).tag(CGDirectDisplayID?.some(screen.displayID))
+            Toggle("Show on lock screen", isOn: $settings.lockScreenEnabled)
+            VStack(alignment: .leading, spacing: 4) {
+                Picker("Full-screen stage", selection: $settings.stageDisplayID) {
+                    Text("Off").tag(CGDirectDisplayID?.none)
+                    ForEach(NSScreen.screens, id: \.displayID) { screen in
+                        Text(screen.localizedName).tag(CGDirectDisplayID?.some(screen.displayID))
+                    }
                 }
+                Text("⌃⌥⌘L toggles it on the display under the pointer.")
+                    .font(.caption).foregroundStyle(.tertiary)
             }
 
             Divider()
@@ -28,28 +37,66 @@ struct MenuView: View {
             if !settings.starlight {
                 Toggle("Colours from album art", isOn: $settings.autoColors)
                 if !settings.autoColors {
-                    ColorPicker("Stars and lines", selection: $settings.lyricColor)
+                    ColorPicker("Lyrics", selection: $settings.lyricColor)
                     ColorPicker("Current word", selection: $settings.highlightColor)
                 }
             }
-
             LabeledContent("Text size") {
                 Slider(value: $settings.textScale, in: 0.6...1.8)
             }
-            LabeledContent("Sync offset") {
+
+            Divider()
+
+            LabeledContent("Sync, all songs") {
                 Stepper("\(Int(settings.syncOffsetMs)) ms", value: $settings.syncOffsetMs, in: -2000...2000, step: 50)
             }
+            if player.track != nil {
+                LabeledContent("Sync, this song") {
+                    Stepper(songOffsetLabel, value: songOffset, in: -3000...3000, step: 100)
+                }
+            }
+
+            Divider()
+
             Toggle("Keep display awake while playing", isOn: $settings.keepAwake)
+            Toggle("Open at login", isOn: Binding(get: { login.enabled }, set: { login.set($0) }))
+            if let error = login.error {
+                Text(error).font(.caption).foregroundStyle(.orange)
+            }
 
             Divider()
 
             HStack {
+                Text("Verse \(updates.current)").font(.caption).foregroundStyle(.tertiary)
                 Spacer()
                 Button("Quit Verse") { NSApp.terminate(nil) }
             }
         }
         .padding(16)
-        .frame(width: 320)
+        .frame(width: 330)
+    }
+
+    private var songOffset: Binding<Double> {
+        Binding(get: { model.songOffsetMs }, set: { model.songOffsetMs = $0 })
+    }
+
+    private var songOffsetLabel: String {
+        let ms = Int(model.songOffsetMs)
+        return ms == 0 ? "0 ms" : String(format: "%+d ms", ms)
+    }
+
+    private func updateBanner(_ version: String) -> some View {
+        Button { updates.openDownload() } label: {
+            HStack {
+                Image(systemName: "arrow.down.circle.fill")
+                Text("Verse \(version) is available")
+                Spacer()
+                Text("Download").fontWeight(.semibold)
+            }
+            .padding(10)
+            .background(Color.accentColor.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private var header: some View {

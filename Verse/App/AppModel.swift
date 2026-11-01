@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import Combine
 import SwiftUI
 
@@ -10,6 +11,9 @@ final class AppModel: ObservableObject {
     let settings = Settings.shared
     let player = NowPlayingMonitor()
     let lock = LockMonitor()
+    let updates = UpdateChecker()
+    let launchAtLogin = LaunchAtLogin()
+    private var stageHotKey: HotKey?
 
     @Published private(set) var lyrics: Lyrics? {
         didSet { layout = lyrics.map(ConstellationLayout.init(lyrics:)) }
@@ -32,13 +36,35 @@ final class AppModel: ObservableObject {
         return settings.autoColors ? (autoPalette ?? .default) : settings.manualPalette
     }
 
-    /// Playback time used for rendering, including the user's sync offset.
+    /// Playback time used for rendering, including the global and per-song sync offsets.
     func playbackTime(at date: Date) -> TimeInterval {
-        player.position(at: date) + settings.syncOffsetMs / 1000
+        player.position(at: date) + (settings.syncOffsetMs + songOffsetMs) / 1000
+    }
+
+    /// Extra offset for the current song only (ms).
+    var songOffsetMs: Double {
+        get { player.track.map { settings.songOffsets[$0.cacheKey] ?? 0 } ?? 0 }
+        set {
+            guard let key = player.track?.cacheKey else { return }
+            settings.songOffsets[key] = newValue == 0 ? nil : newValue
+        }
+    }
+
+    /// ⌃⌥⌘L: show or hide the full-screen stage on the display under the pointer.
+    func toggleStage() {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main
+        guard let id = screen?.displayID else { return }
+        settings.stageDisplayID = settings.stageDisplayID == id ? nil : id
     }
 
     func start() {
         player.start()
+        updates.start()
+        launchAtLogin.refresh()
+        stageHotKey = HotKey(keyCode: kVK_ANSI_L, modifiers: cmdKey | optionKey | controlKey) { [weak self] in
+            self?.toggleStage()
+        }
 
         player.$track
             .removeDuplicates()
@@ -78,7 +104,13 @@ final class AppModel: ObservableObject {
             let found = await lyricsService.lyrics(for: track)
             guard !Task.isCancelled, player.track == track else { return }
             lyrics = found
-            status = found.map { "\($0.source) · \($0.timing == .word ? "word sync" : "line sync")" } ?? "No synced lyrics found"
+            status = found.map { lyrics -> String in
+                switch lyrics.timing {
+                case .word: "\(lyrics.source) · word sync"
+                case .line: "\(lyrics.source) · line sync"
+                case .estimated: "\(lyrics.source) · plain lyrics, timing estimated"
+                }
+            } ?? "No lyrics found"
         }
         artworkTask = Task { [weak self] in
             guard let self else { return }

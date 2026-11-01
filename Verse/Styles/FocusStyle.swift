@@ -7,11 +7,14 @@ struct FocusStyle: View {
     let lyrics: Lyrics
     let palette: Palette
     let scale: Double
+    var gap = LyricGap.none
 
     var body: some View {
         GeometryReader { geo in
             let unit = min(geo.size.width, geo.size.height) * scale
-            let current = max(lyrics.position(at: time).line, 0)
+            let sung = max(lyrics.position(at: time).line, 0)
+            // In a long break, bring the next line forward early as a dim preview.
+            let current = (gap.amount > 0.3 ? gap.nextLine : nil).map { max($0, sung) } ?? sung
             VStack(spacing: unit * 0.035) {
                 line(current - 1, size: unit * 0.032, emphasis: false)
                 line(current, size: unit * 0.068, emphasis: true)

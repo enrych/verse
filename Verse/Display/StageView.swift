@@ -14,14 +14,23 @@ struct StageView: View {
             ZStack {
                 background
 
-                if let layout = model.layout {
+                if let lyrics = model.lyrics {
                     TimelineView(.animation(minimumInterval: nil, paused: !player.isPlaying)) { context in
-                        ConstellationStyle(
-                            time: model.playbackTime(at: context.date),
-                            layout: layout,
-                            palette: model.palette,
-                            scale: settings.textScale
-                        )
+                        let t = model.playbackTime(at: context.date)
+                        let gap = lyrics.gap(at: t)
+                        ZStack {
+                            if settings.lockBackground != .black {
+                                AmbientSky(amount: gap.amount, time: context.date.timeIntervalSinceReferenceDate)
+                            }
+                            lyricsView(lyrics, time: t, gap: gap)
+                                .opacity(player.isPlaying ? 1 : 0.35)
+                        }
+                    }
+                    if !player.isPlaying, player.track != nil {
+                        PausedBadge(color: model.palette.lyric)
+                            .frame(maxHeight: .infinity, alignment: .bottom)
+                            .padding(.bottom, geo.size.height * 0.1)
+                            .transition(.opacity)
                     }
                 } else if surface == .stage, let track = player.track {
                     VStack(spacing: 8) {
@@ -36,17 +45,34 @@ struct StageView: View {
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.8), value: model.palette)
+        .animation(.easeInOut(duration: 0.4), value: player.isPlaying)
     }
 
-    /// Night (textured) or plain black.
+    @ViewBuilder
+    private func lyricsView(_ lyrics: Lyrics, time: TimeInterval, gap: LyricGap) -> some View {
+        switch settings.style {
+        case .constellation:
+            if let layout = model.layout {
+                ConstellationStyle(time: time, layout: layout, palette: model.palette, scale: settings.textScale, gap: gap)
+            }
+        case .focus:
+            FocusStyle(time: time, lyrics: lyrics, palette: model.palette, scale: settings.textScale, gap: gap)
+        }
+    }
+
+    /// Night, Black or Album art (Wallpaper falls back to Night off the lock screen).
     @ViewBuilder private var base: some View {
-        if settings.lockBackground == .black { Color.black } else { NightBackground() }
+        switch settings.lockBackground {
+        case .black: Color.black
+        case .album: AlbumBackground(artwork: model.artwork)
+        case .night, .wallpaper: NightBackground()
+        }
     }
 
     @ViewBuilder private var background: some View {
         switch surface {
         case .lockScreen where settings.lockBackground != .wallpaper:
-            // Night or black, with our own small clock since it covers the system one.
+            // Our own small clock, since this covers the system one.
             ZStack(alignment: .top) {
                 base
                 TimelineView(.everyMinute) { context in
@@ -59,20 +85,21 @@ struct StageView: View {
         case .lockScreen:
             // Keep the user's wallpaper; just darken it enough to read.
             LinearGradient(colors: [.black.opacity(0.15), .black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
-        case .stage where settings.starlight:
-            base
         case .stage:
-            ZStack {
-                model.palette.background
-                if let art = model.artwork {
-                    Image(nsImage: art)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .blur(radius: 80)
-                        .opacity(0.45)
-                        .clipped()
-                }
-            }
+            base
         }
+    }
+}
+
+/// Small, quiet "Paused" label.
+private struct PausedBadge: View {
+    let color: Color
+    var body: some View {
+        Label("Paused", systemImage: "pause.fill")
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(color.opacity(0.8))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 7)
+            .background(.white.opacity(0.08), in: Capsule())
     }
 }

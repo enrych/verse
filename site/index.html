@@ -224,7 +224,7 @@
       <span>Download for Mac</span>
       <i aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6h8M6.5 2.5 10 6l-3.5 3.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></i>
     </a>
-    <p class="fine"><a href="https://github.com/enrych/verse">View source on GitHub</a> · Free · macOS 14+</p>
+    <p class="fine"><a href="https://github.com/enrych/verse">View source on GitHub</a> · Free · macOS 14+<span data-version></span></p>
   </div>
 </header>
 
@@ -278,6 +278,11 @@
     };
     draw(); addEventListener("resize", draw);
   })();
+  // Current release, shown next to the download.
+  fetch("https://api.github.com/repos/enrych/verse/releases/latest")
+    .then(r => (r.ok ? r.json() : null))
+    .then(r => { if (r?.tag_name) document.querySelectorAll("[data-version]").forEach(el => el.textContent = " · " + r.tag_name); })
+    .catch(() => {});
 </script>
 <script src="lyrics.js"></script>
 <script src="verse.js"></script>

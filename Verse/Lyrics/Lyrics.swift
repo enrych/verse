@@ -62,3 +62,44 @@ extension Lyrics {
         return (time - w.start) / max(w.end - w.start, 0.001)
     }
 }
+
+/// A quiet stretch with no singing: the intro, a long break, or the outro.
+struct LyricGap: Equatable {
+    /// 0 while singing, rising to 1 a moment into a gap and falling back just before the next line.
+    var amount: Double
+    /// The line that comes next, if any (nil during the outro).
+    var nextLine: Int?
+
+    static let none = LyricGap(amount: 0, nextLine: nil)
+}
+
+extension Lyrics {
+    /// Gaps shorter than `minimum` seconds are ignored.
+    func gap(at t: TimeInterval, minimum: TimeInterval = 3) -> LyricGap {
+        func fade(_ from: TimeInterval, _ to: TimeInterval) -> Double {
+            min(min((t - from) / 1.0, 1), max((to - t) / 0.6, 0))
+        }
+        guard let first = lines.firstIndex(where: { !$0.isBlank }) else { return .none }
+
+        // Intro.
+        if t < lines[first].start {
+            guard lines[first].start >= minimum else { return .none }
+            return LyricGap(amount: max(fade(0, lines[first].start), 0), nextLine: first)
+        }
+
+        // Last line that has started, and the next one after it.
+        var previous: Int?, next: Int?
+        for (i, line) in lines.enumerated() where !line.isBlank {
+            if line.start <= t { previous = i } else { next = i; break }
+        }
+        guard let p = previous, t > lines[p].end else { return .none }
+
+        // Outro.
+        guard let n = next else {
+            return LyricGap(amount: min(max((t - lines[p].end - 1.5) / 1.5, 0), 1), nextLine: nil)
+        }
+        let start = lines[p].end + 0.6
+        guard lines[n].start - start >= minimum, t > start else { return .none }
+        return LyricGap(amount: max(fade(start, lines[n].start), 0), nextLine: n)
+    }
+}
