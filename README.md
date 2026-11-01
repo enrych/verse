@@ -7,7 +7,7 @@ Free and open source.
 
 Lock screen lyrics · Spotify and Apple Music · macOS 14+ · Apple silicon and Intel
 
-**[Download the latest release](https://github.com/enrych/verse/releases/latest/download/Verse.dmg)**
+**[Download the latest release](https://verse-6gy.pages.dev/download)**
 
 ## Install
 
@@ -43,8 +43,10 @@ the run). The site's download links always point at the latest release.
 
 ## Website
 
-`site/` is a static homepage (no build step). Deploy it on Cloudflare Pages or
-Vercel by connecting the repo and setting the root/output directory to `site`.
+`site/` is a static homepage (no build step), deployed on Cloudflare Pages with
+output directory `site`. `functions/download.js` serves `/download`: the latest
+release's DMG, fetched from GitHub once per version and then served from
+Cloudflare (Workers KV binding `DOWNLOADS`).
 
 ## How it works
 
