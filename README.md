@@ -71,6 +71,10 @@ Cloudflare (Workers KV binding `DOWNLOADS`).
   lyrics spread across the song as a last resort.
 - **Full-screen stage** on any display; **⌃⌥⌘L** toggles it on the display under
   the pointer.
+- **Edge glow:** ambient light around the screen edges in your colours, pulsing
+  with every sung word (or breathing, or still), notch-aware, on the desktop and
+  the lock screen.
+- **Now-playing card** on the lock screen.
 - **Open at login**, keeps the display awake while music plays, and tells you in
   the menu when a new version is out.
 
@@ -108,6 +112,9 @@ Verse/
 I saw a reel of [Verci](https://www.verci.xyz), lyrics drifting across a Mac's
 lock screen, and loved it. It was paid, and I'm a developer, so I made my own,
 from scratch. If you want the polished version, buy Verci. It's lovely.
+
+Edge glow was inspired by [Lumn](https://www.trylumn.xyz), from the same developer,
+which does ambient, music-synced screen lighting beautifully.
 
 ## License
 

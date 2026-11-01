@@ -29,6 +29,24 @@ enum ColourSource: String, CaseIterable, Identifiable {
     }
 }
 
+enum GlowMotion: String, CaseIterable, Identifiable {
+    /// Pulses on every sung word.
+    case lyrics
+    /// A slow idle swell.
+    case breathe
+    /// Steady light.
+    case still
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .lyrics: "Lyrics"
+        case .breathe: "Breathe"
+        case .still: "Still"
+        }
+    }
+}
+
 enum LockBackground: String, CaseIterable, Identifiable {
     /// Near-black with faint dust stars and grain (default).
     case night
@@ -63,6 +81,18 @@ final class Settings: ObservableObject {
     /// Warm starlight colours instead of the album/manual palette.
     @Published var starlight: Bool { didSet { defaults.set(starlight, forKey: "starlight") } }
     @Published var lockBackground: LockBackground { didSet { defaults.set(lockBackground.rawValue, forKey: "lockBackground") } }
+    /// Glass now-playing card under the clock on the lock screen.
+    @Published var nowPlayingCard: Bool { didSet { defaults.set(nowPlayingCard, forKey: "nowPlayingCard") } }
+
+    // Edge Glow: ambient light around the screen edges.
+    @Published var glowEnabled: Bool { didSet { defaults.set(glowEnabled, forKey: "glowEnabled") } }
+    @Published var glowMotion: GlowMotion { didSet { defaults.set(glowMotion.rawValue, forKey: "glowMotion") } }
+    /// Band thickness in points.
+    @Published var glowThickness: Double { didSet { defaults.set(glowThickness, forKey: "glowThickness") } }
+    /// How far and bright the light spills (0…1).
+    @Published var glowStrength: Double { didSet { defaults.set(glowStrength, forKey: "glowStrength") } }
+    /// Keep glowing when nothing is playing.
+    @Published var glowAlways: Bool { didSet { defaults.set(glowAlways, forKey: "glowAlways") } }
     /// Display that shows the full-screen stage while unlocked. nil = off.
     @Published var stageDisplayID: CGDirectDisplayID? {
         didSet { defaults.set(stageDisplayID.map { Int($0) }, forKey: "stageDisplayID") }
@@ -92,6 +122,12 @@ final class Settings: ObservableObject {
             "textScale": 1.0,
             "syncOffsetMs": 150.0,
             "keepAwake": true,
+            "nowPlayingCard": true,
+            "glowEnabled": false,
+            "glowMotion": GlowMotion.lyrics.rawValue,
+            "glowThickness": 10.0,
+            "glowStrength": 0.6,
+            "glowAlways": false,
         ])
         style = LyricStyle(rawValue: defaults.string(forKey: "style") ?? "") ?? .constellation
         songOffsets = defaults.dictionary(forKey: "songOffsets") as? [String: Double] ?? [:]
@@ -106,6 +142,12 @@ final class Settings: ObservableObject {
         textScale = defaults.double(forKey: "textScale")
         syncOffsetMs = defaults.double(forKey: "syncOffsetMs")
         keepAwake = defaults.bool(forKey: "keepAwake")
+        nowPlayingCard = defaults.bool(forKey: "nowPlayingCard")
+        glowEnabled = defaults.bool(forKey: "glowEnabled")
+        glowMotion = GlowMotion(rawValue: defaults.string(forKey: "glowMotion") ?? "") ?? .lyrics
+        glowThickness = defaults.double(forKey: "glowThickness")
+        glowStrength = defaults.double(forKey: "glowStrength")
+        glowAlways = defaults.bool(forKey: "glowAlways")
     }
 
     var colourSource: ColourSource {

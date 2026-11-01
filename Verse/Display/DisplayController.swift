@@ -8,6 +8,7 @@ final class DisplayController {
     private unowned let model: AppModel
     private var lockWindows: [NSWindowController] = []
     private var stageWindow: StageWindow?
+    private var glowWindows: [CGDirectDisplayID: GlowWindow] = [:]
 
     init(model: AppModel) {
         self.model = model
@@ -22,6 +23,30 @@ final class DisplayController {
             showStage(on: screen)
         } else {
             hideStage()
+        }
+
+        // Desktop glow (the lock-screen layer draws its own).
+        let wantGlow = settings.glowEnabled && !locked && (model.player.isPlaying || settings.glowAlways)
+        updateGlow(on: wantGlow ? NSScreen.screens : [])
+    }
+
+    // MARK: Edge glow
+
+    private func updateGlow(on screens: [NSScreen]) {
+        let wanted = Set(screens.map(\.displayID))
+        for (id, window) in glowWindows where !wanted.contains(id) {
+            window.orderOut(nil)
+            glowWindows[id] = nil
+        }
+        for screen in screens {
+            if let existing = glowWindows[screen.displayID] {
+                existing.setFrame(screen.frame, display: true)
+                continue
+            }
+            let window = GlowWindow(screen: screen)
+            window.contentView = NSHostingView(rootView: GlowOverlay(notch: screen.notchRect))
+            window.orderFrontRegardless()
+            glowWindows[screen.displayID] = window
         }
     }
 

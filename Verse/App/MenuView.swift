@@ -20,6 +20,7 @@ struct MenuView: View {
                 ForEach(LockBackground.allCases) { Text($0.title).tag($0) }
             }
             Toggle("Show on lock screen", isOn: $settings.lockScreenEnabled)
+            Toggle("Now-playing card on lock screen", isOn: $settings.nowPlayingCard)
             VStack(alignment: .leading, spacing: 4) {
                 Picker("Full-screen stage", selection: $settings.stageDisplayID) {
                     Text("Off").tag(CGDirectDisplayID?.none)
@@ -42,6 +43,19 @@ struct MenuView: View {
             }
             LabeledContent("Text size") {
                 Slider(value: $settings.textScale, in: 0.6...1.8)
+            }
+
+            Divider()
+
+            Toggle("Edge glow", isOn: $settings.glowEnabled)
+            if settings.glowEnabled {
+                Picker("Motion", selection: $settings.glowMotion) {
+                    ForEach(GlowMotion.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                LabeledContent("Thickness") { Slider(value: $settings.glowThickness, in: 2...40) }
+                LabeledContent("Glow") { Slider(value: $settings.glowStrength, in: 0...1) }
+                Toggle("Glow even when nothing's playing", isOn: $settings.glowAlways)
             }
 
             Divider()

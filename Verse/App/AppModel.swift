@@ -79,11 +79,14 @@ final class AppModel: ObservableObject {
 
         // @Published fires before the value is stored; hop to the next runloop
         // turn so the controller reads the new values.
-        Publishers.Merge4(
-            lock.$isLocked.map { _ in () },
-            settings.$lockScreenEnabled.map { _ in () },
-            settings.$stageDisplayID.map { _ in () },
-            NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification).map { _ in () }
+        Publishers.MergeMany(
+            lock.$isLocked.map { _ in () }.eraseToAnyPublisher(),
+            settings.$lockScreenEnabled.map { _ in () }.eraseToAnyPublisher(),
+            settings.$stageDisplayID.map { _ in () }.eraseToAnyPublisher(),
+            settings.$glowEnabled.map { _ in () }.eraseToAnyPublisher(),
+            settings.$glowAlways.map { _ in () }.eraseToAnyPublisher(),
+            player.$isPlaying.removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+            NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification).map { _ in () }.eraseToAnyPublisher()
         )
         .receive(on: RunLoop.main)
         .sink { [weak self] in self?.displays.update(locked: self?.lock.isLocked ?? false) }

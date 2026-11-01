@@ -42,6 +42,18 @@ struct StageView: View {
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .overlay {
+                if surface == .lockScreen && settings.glowEnabled && (player.isPlaying || settings.glowAlways) {
+                    GlowOverlay(notch: nil)
+                }
+            }
+            .overlay(alignment: .top) {
+                if surface == .lockScreen, settings.nowPlayingCard, let track = player.track {
+                    NowPlayingCard(track: track, artwork: model.artwork)
+                        .padding(.top, settings.lockBackground == .wallpaper ? geo.size.height * 0.24 : 92)
+                        .transition(.opacity)
+                }
+            }
         }
         .ignoresSafeArea()
         .animation(.easeInOut(duration: 0.8), value: model.palette)
@@ -101,5 +113,46 @@ private struct PausedBadge: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
             .background(.white.opacity(0.08), in: Capsule())
+    }
+}
+
+/// Glass now-playing card on the lock screen: cover, title, artist, progress.
+private struct NowPlayingCard: View {
+    let track: Track
+    let artwork: NSImage?
+    @ObservedObject private var player = AppModel.shared.player
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let artwork { Image(nsImage: artwork).resizable().aspectRatio(contentMode: .fill) }
+                else { Image(systemName: "music.note").font(.title2).foregroundStyle(.white.opacity(0.6)) }
+            }
+            .frame(width: 46, height: 46)
+            .background(.white.opacity(0.08))
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(track.title).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                Text(track.artist).font(.system(size: 12.5)).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let progress = track.duration > 0 ? min(max(player.position(at: context.date) / track.duration, 0), 1) : 0
+                    GeometryReader { g in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(.white.opacity(0.18))
+                            Capsule().fill(.white.opacity(0.85)).frame(width: g.size.width * progress)
+                        }
+                    }
+                    .frame(height: 3)
+                    .padding(.top, 5)
+                }
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(12)
+        .frame(width: 340)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(.white.opacity(0.12), lineWidth: 0.5))
+        .environment(\.colorScheme, .dark)
     }
 }
